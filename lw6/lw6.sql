@@ -15,11 +15,24 @@ SELECT pharmacy.name, [order].date, [order].quantity FROM [order]
   WHERE medicine.name = 'Кордерон' AND company.name = 'Аргус';
 
 -- 3. Дать список лекарств компании “Фарма”, на которые не были сделаны заказы до 25 января
-SELECT medicine.name FROM medicine
-  LEFT JOIN production ON medicine.id_medicine = production.id_medicine
-  LEFT JOIN [order] ON [order].id_production = production.id_production
-  LEFT JOIN company ON company.id_company = production.id_company
+SELECT DISTINCT medicine.name FROM medicine
+  INNER JOIN production ON medicine.id_medicine = production.id_medicine
+  INNER JOIN company ON company.id_company = production.id_company
+  INNER JOIN [order] ON [order].id_production = production.id_production
   WHERE company.name = 'Фарма' AND [order].date >= '25.01.2019';
+
+SELECT DISTINCT medicine.name FROM production
+  LEFT JOIN medicine ON production.id_medicine = medicine.id_medicine
+  LEFT JOIN company ON company.id_company = production.id_company
+  LEFT JOIN [order] ON [order].id_production = production.id_production
+  WHERE company.name = 'Фарма' AND ([order].date >= '25.01.2019' OR [order].date IS NULL);
+
+SELECT tbl.name FROM (SELECT medicine.name, MIN([order].date) as min_order_date FROM medicine
+  LEFT JOIN production ON medicine.id_medicine = production.id_medicine
+  LEFT JOIN company ON company.id_company = production.id_company
+  LEFT JOIN [order] ON [order].id_production = production.id_production
+  WHERE company.name = 'Фарма'
+  GROUP BY medicine.name) as tbl WHERE tbl.min_order_date >= '25.01.2019';
 
 -- 4. Дать минимальный и максимальный баллы лекарств каждой фирмы, которая оформила не менее 120 заказов
 SELECT company.name, MAX(production.rating) AS max_rating, MIN(production.rating) AS min_rating FROM company
@@ -29,12 +42,12 @@ SELECT company.name, MAX(production.rating) AS max_rating, MIN(production.rating
   HAVING COUNT([order].id_order) >= 120;
 
 -- 5. Дать списки сделавших заказы аптек по всем дилерам компании “AstraZeneca”. Если у дилера нет заказов, в названии аптеки проставить NULL
-SELECT dealer.name, pharmacy.name FROM dealer
+SELECT distinct dealer.name, pharmacy.name FROM dealer
   LEFT JOIN company ON dealer.id_company = company.id_company
   LEFT JOIN [order] ON dealer.id_dealer = [order].id_dealer
   LEFT JOIN pharmacy ON [order].id_pharmacy = pharmacy.id_pharmacy
-  WHERE company.name = 'AstraZeneca';
-
+  WHERE company.name = 'AstraZeneca'
+  
 -- 6. Уменьшить на 20% стоимость всех лекарств, если она превышает 3000, а длительность лечения не более 7 дней
 UPDATE production SET production.price = production.price * 0.8 FROM production
   LEFT JOIN medicine ON production.id_medicine = medicine.id_medicine
