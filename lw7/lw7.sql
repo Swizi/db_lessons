@@ -10,13 +10,23 @@ ALTER TABLE student ADD FOREIGN KEY(id_group) REFERENCES [group](id_group);
 GO
 -- 2. Выдать оценки студентов по информатике если они обучаются данному предмету.
 --    Оформить выдачу данных с использованием view
+ --
 
-CREATE VIEW computer_science_result AS
-  SELECT student.name, mark.mark FROM student
-    LEFT JOIN mark ON student.id_student = mark.id_student
-    LEFT JOIN lesson ON mark.id_lesson = lesson.id_lesson
+DROP VIEW computer_science_students_lessons;
+DROP VIEW computer_science_result;
+GO
+
+CREATE VIEW computer_science_students_lessons AS
+  SELECT student.name, lesson.id_lesson FROM student
+	LEFT JOIN [group] ON student.id_group = [group].id_group
+    LEFT JOIN lesson ON [group].id_group = lesson.id_group
     LEFT JOIN [subject] ON [subject].id_subject = lesson.id_subject
 	WHERE [subject].name = 'Информатика'
+GO
+
+CREATE VIEW computer_science_result AS
+  SELECT computer_science_students_lessons.name, mark.mark FROM computer_science_students_lessons
+	LEFT JOIN mark ON computer_science_students_lessons.id_lesson = mark.id_lesson;
 GO
 
 SELECT * FROM computer_science_result;
@@ -26,18 +36,26 @@ GO
 --    Должниками считаются студенты, не имеющие оценки по предмету, который ведется в группе.
 --    Оформить в виде процедуры, на входе идентификатор группы
 
-CREATE PROCEDURE debtor_procedure (@ID_GROUP INT)
+DROP PROCEDURE get_debtors;
+GO
+
+CREATE PROCEDURE get_debtors (@ID_GROUP INT)
 AS
-  SELECT student.name as student, [subject].name as subject FROM  student
+  SELECT student.name, subject.name, COUNT(mark.mark) FROM student
     LEFT JOIN [group] ON student.id_group = [group].id_group
     LEFT JOIN lesson ON lesson.id_group = [group].id_group
 	LEFT JOIN [subject] ON lesson.id_subject = [subject].id_subject
-	LEFT JOIN mark ON mark.id_lesson = lesson.id_lesson
-	WHERE mark.mark IS NULL AND [group].id_group = @ID_GROUP
+	LEFT JOIN mark ON mark.id_lesson = lesson.id_lesson AND student.id_student = mark.id_student
+	WHERE [group].id_group = @ID_GROUP
+	GROUP BY student.name, subject.name
+	HAVING COUNT(mark.mark) = 0
 GO
 
-EXEC debtor_procedure @ID_GROUP = 1;
+EXEC get_debtors @ID_GROUP = 4;
 
+SELECT * FROM mark m
+join lesson l on l.id_lesson = m.id_lesson 
+where m.id_student = 18 and l.id_subject = 10 and l.id_group = 1
 -- 4. Дать среднюю оценку студентов по каждому предмету для тех предметов, по которым занимается
 -- не менее 35 студентов
 
